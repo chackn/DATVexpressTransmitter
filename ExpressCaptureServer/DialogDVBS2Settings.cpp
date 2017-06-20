@@ -262,7 +262,9 @@ void CDialogDVBS2Settings::OnBnClickedOk()
     // Only 0.35 rolloff supported due to FPGA size
 	fmt.roll_off = RO_0_35;
 	cmd_set_dvbs2_rolloff("0.35");
+#ifndef ENABLE_LIMESDR
 	express_set_filter(RO_35);
+#endif
 	/*
 	switch (id) {
 	case IDC_DVBS2_RO_35:  

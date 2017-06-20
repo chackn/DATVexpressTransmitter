@@ -4,6 +4,10 @@
 #include "error_codes.h"
 #include "DVB-T\dvb_t.h"
 
+#ifdef ENABLE_LIMESDR
+#include "LimeSDR.h"
+#endif
+
 static int g_sr;
 static int g_fec[2];
 static int64_t g_gross_bitrate;
@@ -58,7 +62,12 @@ void set_modem_params(void){
 		fmt.ir   = 1;
 		fmt.sf   = SF_NH;
 		dvb_t_configure(&fmt);
+
+#ifdef ENABLE_LIMESDR
+		limesdr_set_sr(fmt.sr);
+#else
 		express_set_sr(fmt.sr);
+#endif
 		calculate_bitrate();
 	}
 

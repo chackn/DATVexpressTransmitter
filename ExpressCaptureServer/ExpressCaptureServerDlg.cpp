@@ -590,8 +590,10 @@ void CExpressCaptureServerDlg::OnFileRestart()
 	m_ptt_status.SetWindowTextA("STANDBY");
 	system_stop();
 	tx_buf_empty();
-	express_deinit();
 
+#ifndef ENABLE_LIMESDR	
+	express_deinit();
+#endif
 	if (system_restart() == S_OK) {
 		m_fully_configured = TRUE;
 		m_ptt_button.EnableWindow(TRUE);

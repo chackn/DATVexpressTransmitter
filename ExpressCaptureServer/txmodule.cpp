@@ -5,6 +5,10 @@
 #include "DVB-T\dvb_t.h"
 #include "noise.h"
 
+#ifdef ENABLE_LIMESDR
+#include "LimeSDR.h"
+#endif
+
 DWORD lpThreadId;
 int g_running;
 
@@ -20,7 +24,9 @@ UINT tx_thread(LPVOID pParam)
 			// The mode is DVB-S
 			//
 			if ((b = get_tx_buff()) != NULL) {
+#ifndef ENABLE_LIMESDR
 				express_write_transport_stream(b, TP_SIZE);
+#endif
 			}
 			else
 			{
@@ -34,7 +40,12 @@ UINT tx_thread(LPVOID pParam)
 			if ((b = get_tx_buff()) != NULL) {
 				if ((len = theDvbS2.s2_add_ts_frame(b))>0) {
 					// Time to send new frame
-					express_write_16_bit_samples(noise_add(theDvbS2.pl_get_frame(), len),len);
+#ifdef ENABLE_LIMESDR
+					limesdr_write_16_bit_samples(noise_add(theDvbS2.pl_get_frame(), len), len);
+#else
+					express_write_16_bit_samples(noise_add(theDvbS2.pl_get_frame(), len), len);
+#endif
+					
 					//express_write_16_bit_samples(theDvbS2.pl_get_frame(), len);
 				}
 				rel_tx_buff(b);
@@ -48,7 +59,11 @@ UINT tx_thread(LPVOID pParam)
 			if ((b = get_tx_buff()) != NULL) {
 				if ((len = dvb_t_encode_and_modulate(b)) > 0) {
 					// Time to send new frame
-					express_write_16_bit_samples((scmplx*)dvb_t_get_frame(), len);
+#ifdef ENABLE_LIMESDR
+					limesdr_write_16_bit_samples(noise_add(theDvbS2.pl_get_frame(), len), len);
+#else
+					express_write_16_bit_samples(noise_add(theDvbS2.pl_get_frame(), len), len);
+#endif
 				}
 				rel_tx_buff(b);
 			}

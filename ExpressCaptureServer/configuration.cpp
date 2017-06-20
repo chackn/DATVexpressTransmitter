@@ -7,6 +7,10 @@
 #include "DVB-T\dvb_t.h"
 #include "noise.h"
 
+#ifdef ENABLE_LIMESDR
+#include "LimeSDR.h"
+#endif
+
 static CString g_error_text;
 static CString g_config_filename;
 static int  g_txmode;
@@ -373,23 +377,42 @@ void cmd_set_dvbs2_constellation(const char *cons) {
 
 void cmd_set_dvbs_freq(const char *freq){
 	g_tx_frequency = strtoul(freq,NULL,0);
+#ifdef ENABLE_LIMESDR
+	limesdr_set_freq(g_tx_frequency);
+#else
 	express_set_freq(g_tx_frequency);
+#endif
 }
 void cmd_set_dvbs_level(const char *level){
 	g_tx_level = atoi(level);
 	if (g_tx_level > 47) g_tx_level = 47;
+
+#ifdef ENABLE_LIMESDR
+	limesdr_set_level(g_tx_level);
+#else
 	express_set_level(g_tx_level);
+#endif
+
 }
 void cmd_set_tx_level(int level) {
 	g_tx_level = level;
 	if (g_tx_level > 47) g_tx_level = 47;
 	if (g_tx_level < 0)  g_tx_level = 0;
+
+#ifdef ENABLE_LIMESDR
+	limesdr_set_level(g_tx_level);
+#else
 	express_set_level(g_tx_level);
+#endif
+
 }
 void cmd_set_tx_ports(const char *ports) {
 	g_tx_ports = atoi(ports);
 	g_tx_ports <<= 4;
+
+#ifndef ENABLE_LIMESDR
 	express_set_ports(g_tx_ports);
+#endif
 }
 void cmd_set_dvbs_srate(const char *srate){
 	g_tx_sr = atoi(srate);
@@ -923,12 +946,21 @@ int LoadOnAirFormatsFromDisk(int nr, CString *fmts)
 
 int ConfigureExpress(void)
 {
+
+	int res = 0;
+#ifdef ENABLE_LIMESDR
+
+	res=limesdr_init();
+	limesdr_run();
+
+#else 
+
 	FILE *fpga,*fx2;
 	char directory[250];
 	char rbfname[80];
 	char ihxname[80];
 
-	int res = 0;
+	
 	switch (g_txmode) {
 	case M_DVBS :
 		sprintf_s(ihxname, "\\datvexpress8.ihx");
@@ -971,9 +1003,23 @@ int ConfigureExpress(void)
 			res = -3;
 		}
 	}
+
+#endif
+
 	return res;
 }
 void SetExpressChannel(void){
+
+#ifdef ENABLE_LIMESDR
+
+	limesdr_set_freq(g_tx_frequency);
+	limesdr_set_level(g_tx_level);
+	if (get_txmode() == M_DVBT) {
+		limesdr_set_sr(dvb_t_get_sample_rate());
+	}
+	else limesdr_set_sr(g_tx_sr);
+
+#else
 	express_set_fec(g_dvbs_fec);
 	express_set_freq(g_tx_frequency);
 	express_set_level(g_tx_level);
@@ -981,12 +1027,19 @@ void SetExpressChannel(void){
 	express_set_qcal(g_q_dc_offset);
 	if (get_txmode() == M_DVBT) {
 		express_set_sr(dvb_t_get_sample_rate());
-	}else express_set_sr(g_tx_sr);
+	}
+	else express_set_sr(g_tx_sr);
 	express_set_filter(g_dvbs2_rolloff);
+
+#endif
 }
 void DeConfigureExpress(void)
 {
+#ifdef ENABLE_LIMESDR
+	limesdr_deinit();
+#else
 	express_deinit();
+#endif
 }
 int get_video_codec(void){
 	return g_video_codec;
@@ -1087,7 +1140,9 @@ uint32_t get_current_tx_symbol_rate(void){
 void cmd_transmit(void){
 	if (g_system_status == TRUE) {
 		capture_run();
+#ifndef ENABLE_LIMESDR
 		express_transmit();
+#endif
 		g_tx_status = TRUE;
 	}
 }
@@ -1095,22 +1150,38 @@ void cmd_standby(void){
 	if (g_system_status == TRUE) {
 		tx_buf_empty();
 		capture_pause();
+#ifndef ENABLE_LIMESDR
 		express_receive();
+#endif
 		g_tx_status = FALSE;
 	}
 }
 
 void cmd_tx_frequency( const char * freq){
 	g_tx_frequency = atol(freq);
+
+#ifdef ENABLE_LIMESDR
+	limesdr_set_freq(g_tx_frequency);
+#else
 	express_set_freq(g_tx_frequency);
+#endif
 }
 void cmd_tx_level( const char * level){
 	g_tx_level = atol(level);
+
+#ifdef ENABLE_LIMESDR
+	limesdr_set_level(g_tx_level);
+#else
 	express_set_level(g_tx_level);
+#endif
 }
 void cmd_tx_symbol_rate( const char *sr){
 	g_tx_sr = atol(sr);
-	express_set_level(g_tx_sr);
+#ifdef ENABLE_LIMESDR
+	limesdr_set_sr(g_tx_sr);
+#else
+	express_set_sr(g_tx_sr);
+#endif
 }
 void cmd_tx_fec( const char *fec){
 	g_dvbs_fec = FEC_12;
@@ -1120,19 +1191,24 @@ void cmd_tx_fec( const char *fec){
 	if(strncmp(fec,"5/6",3) == 0) g_dvbs_fec = FEC_56;
 	if(strncmp(fec,"7/8",3) == 0) g_dvbs_fec = FEC_78;
 
+#ifndef ENABLE_LIMESDR
 	express_set_fec(g_dvbs_fec);
+#endif
 }
 void cmd_set_carrier(int chk ){
+#ifndef ENABLE_LIMESDR
 	if(chk) 
 		express_set_carrier(true);
 	else
 		express_set_carrier(false);
+#endif
 }
 void cmd_set_config_filename(CString name) {
 	g_config_filename = name;
 }
 
 int system_restart(void) {
+
 	if (ConfigureExpress() != 0) return -1;
 	codec_init();
 	SetExpressChannel();
@@ -1178,7 +1254,10 @@ int system_restart(void) {
 			codec_start(&params);
 			ps_to_ts_init();
 			tx_start();
+#ifndef ENABLE_LIMESDR
 			express_receive();
+#endif // !ENABLE_LIMESDR
+
 			return 0;
 		}
 	}
@@ -1244,7 +1323,9 @@ int system_start(const char *name){
 }
 void system_stop(void) {
 	if (g_system_status == TRUE) {
+#ifndef ENABLE_LIMESDR
 		express_receive();
+#endif
 		capture_stop();
 		tx_stop();
 		stop_log();

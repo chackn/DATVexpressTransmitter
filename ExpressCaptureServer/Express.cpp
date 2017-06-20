@@ -1331,6 +1331,7 @@ int express_get_tx_queue_size(void)
 
 void express_deinit(void)
 {
+
     if( m_express_status != EXP_OK ) return;
     express_receive();
 	usb_release_interface( m_handle, 0);

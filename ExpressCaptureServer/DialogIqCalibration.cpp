@@ -54,8 +54,9 @@ BOOL CDialogIqCalibration::OnInitDialog()
 	m_i_offset_text.SetWindowTextA(text);
 	text.Format("%d", m_q_value);
 	m_q_offset_text.SetWindowTextA(text);
+#ifndef ENABLE_LIMESDR
 	express_receive();
-
+#endif
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -75,7 +76,10 @@ void CDialogIqCalibration::OnDeltaposSpinICalibraion(NMHDR *pNMHDR, LRESULT *pRe
 		CString text;
 		text.Format("%d", m_i_value);
 		m_i_offset_text.SetWindowTextA(text);
+#ifndef ENABLE_LIMESDR
 		express_set_ical(m_i_value);
+#endif
+		
 	}
 
 	*pResult = 0;
@@ -106,6 +110,8 @@ void CDialogIqCalibration::OnDeltaposSpinQCalibraion(NMHDR *pNMHDR, LRESULT *pRe
 void CDialogIqCalibration::OnClickedCheckEnableIqCalibration()
 {
 	// TODO: Add your control notification handler code here
+
+#ifndef ENABLE_LIMESDR
 	if (m_iq_enable.GetCheck() == TRUE) {
 		express_set_iqcalibrate(TRUE);
 		express_transmit();
@@ -114,6 +120,7 @@ void CDialogIqCalibration::OnClickedCheckEnableIqCalibration()
 		express_set_iqcalibrate(FALSE);
 		express_receive();
 	}
+#endif
 }
 
 
@@ -123,12 +130,16 @@ void CDialogIqCalibration::OnCancel()
 {
 	// TODO: Add your specialized code here and/or call the base class
 	// Go back to the old values
+
+
 	m_i_value = get_i_dc_offset();
 	m_q_value = get_q_dc_offset();
+#ifndef ENABLE_LIMESDR
 	express_set_iqcalibrate(FALSE);
 	express_set_ical(m_i_value);
 	express_set_qcal(m_q_value);
 	express_receive();
+#endif
 	CDialogEx::OnCancel();
 }
 
@@ -139,9 +150,11 @@ void CDialogIqCalibration::OnOK()
 	// Save the new vaklues
 	cmd_set_i_dc_offset(m_i_value);
 	cmd_set_q_dc_offset(m_q_value);
+#ifndef ENABLE_LIMESDR
 	express_set_iqcalibrate(FALSE);
 	express_set_ical(m_i_value);
 	express_set_qcal(m_q_value);
 	express_receive();
+#endif
 	CDialogEx::OnOK();
 }
