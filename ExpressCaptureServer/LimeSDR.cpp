@@ -43,6 +43,9 @@ int limesdr_init() {
 	if (LMS_EnableChannel(device, LMS_CH_TX, 0, true) != 0)
 		return -1;
 
+	if (LMS_SetAntenna(device, LMS_CH_TX, 0, 1) != 0)
+		return -1;
+
 	m_limesdr_status = EXP_OK;
 
 	m_limesdr_tx = FALSE;
